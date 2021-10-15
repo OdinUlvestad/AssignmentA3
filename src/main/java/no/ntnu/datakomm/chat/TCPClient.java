@@ -26,14 +26,18 @@ public class TCPClient {
         // TODO Step 1: implement this method
         // Hint: Remember to process all exceptions and return false on error
         // Hint: Remember to set up all the necessary input/output stream variables
-        try {
-            connection = new Socket(host, port);
+        boolean connectionFlag = false; // Check if the connection was successful
+        System.out.println("Attempting client boot up...");
+        try { // Try to establish a connection to the server
+            this.connection = new Socket(host, port); // The "three way handshake"
+            connectionFlag = true;
+            System.out.println("Connection status = " + connectionFlag);
+        } catch (IOException e) { // Throws an exception if code ran unsuccessfully
+            System.out.println("Connection to socket failed, reason: " + e.getMessage());
 
-        } catch (IOException e) {
-            System.out.println("Error creating the Socket... Reason: " + e.getMessage());
         }
-
-        return false;
+        // returns true if connection was a success, otherwise false.
+        return connectionFlag;
     }
 
     /**
