@@ -2,6 +2,7 @@ package no.ntnu.datakomm.chat;
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -30,6 +31,10 @@ public class TCPClient {
         System.out.println("Attempting client boot up...");
         try { // Try to establish a connection to the server
             this.connection = new Socket(host, port); // The "three way handshake"
+            toServer = new PrintWriter(this.connection.getOutputStream(),true); // sends to the server
+            //fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream())); // reads from the server
+            InputStream test = connection.getInputStream();
+            fromServer = new BufferedReader(new InputStreamReader(test));
             connectionFlag = true;
             System.out.println("Connection status = " + connectionFlag);
         } catch (IOException e) { // Throws an exception if code ran unsuccessfully
@@ -52,13 +57,24 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
+        if (this.connection.isConnected()){
+            try {
+                if (this.connection.isClosed()) {
+                    System.out.println("The socket is already closed");
+                } else {
+                    this.connection.close();
+                }
+            } catch (IOException e) {
+                System.out.println("Error message: " + e.getMessage());
+            }
+        }
     }
 
     /**
      * @return true if the connection is active (opened), false if not.
      */
     public boolean isConnectionActive() {
-        return connection != null;
+        return this.connection != null;
     }
 
     /**
@@ -70,7 +86,20 @@ public class TCPClient {
     private boolean sendCommand(String cmd) {
         // TODO Step 2: Implement this method
         // Hint: Remember to check if connection is active
-        return false;
+        //TODO: Set up input and output streams for communication
+        //TODO: Send a request to the server
+        //TODO: implement the following commands: msg, privmsg, login, help, users.
+        boolean cmdSuccess = false; // Check if command was successful
+        if (this.connection.isConnected()) { // check connection to the socket
+            try { // send command to the server
+                this.toServer.println(cmd);
+                System.out.println("Command to send: " + cmd);
+                cmdSuccess = true;
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+        return cmdSuccess;
     }
 
     /**
@@ -83,7 +112,16 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        return false;
+        boolean sentMsg = false;
+        if (this.connection.isConnected()) {
+            try { // Send request to the server
+                sendCommand("msg " + message);
+                sentMsg = true;
+            } catch (Exception e) {
+                System.out.println("Error message: " + e.getMessage());
+            }
+        }
+        return sentMsg;
     }
 
     /**
@@ -94,6 +132,13 @@ public class TCPClient {
     public void tryLogin(String username) {
         // TODO Step 3: implement this method
         // Hint: Reuse sendCommand() method
+        if (this.connection.isConnected()) {
+            try {
+                sendCommand("login " + username);
+            } catch (Exception e) {
+                e.getMessage();
+            }
+        }
     }
 
     /**
@@ -139,7 +184,6 @@ public class TCPClient {
         // TODO Step 3: Implement this method
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
-
         return null;
     }
 
