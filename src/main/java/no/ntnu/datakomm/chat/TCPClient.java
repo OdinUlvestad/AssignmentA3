@@ -152,7 +152,7 @@ public class TCPClient {
         // client and server exchange for user listing.
         if (this.connection.isConnected()) {
             try {
-
+                sendCommand("users");
             } catch (Exception e) {
                 e.getMessage();
             }
@@ -171,6 +171,11 @@ public class TCPClient {
         // TODO Step 6: Implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
+        if (this.connection.isConnected()) {
+
+            sendCommand("privmsg");
+
+        }
         return false;
     }
 
@@ -234,6 +239,7 @@ public class TCPClient {
      * the connection is closed.
      */
     private void parseIncomingCommands() {
+        String[] users = new String[0];
         while (isConnectionActive()) {
             // TODO Step 3: Implement this method
             // Hint: Reuse waitServerResponse() method
@@ -242,7 +248,11 @@ public class TCPClient {
             // Hint: In Step 3 you need to handle only login-related responses.
             // Hint: In Step 3 reuse onLoginResult() method
             // Checks the login messages
+
             String response = waitServerResponse();
+
+            String[] userList = response.split(" ");
+
             if (response.equals("loginok")){
                 onLoginResult(true, "Login was a success!");
                 System.out.println("Logged in successfully!");
@@ -255,7 +265,9 @@ public class TCPClient {
 
             // TODO Step 5: update this method, handle user-list response from the server
             // Hint: In Step 5 reuse onUserList() method
-
+            else if (userList[0].equals("users")) {
+                onUsersList(userList);
+            }
             // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
             // TODO Step 7: add support for incoming message errors (type: msgerr)
             // TODO Step 7: add support for incoming command errors (type: cmderr)
