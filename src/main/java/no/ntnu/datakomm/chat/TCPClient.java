@@ -171,12 +171,12 @@ public class TCPClient {
         // TODO Step 6: Implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
+        boolean sentMessage = false;
         if (this.connection.isConnected()) {
-
-            sendCommand("privmsg");
-
+            sendCommand("privmsg " + recipient + " " + message);
+            sentMessage = true;
         }
-        return false;
+        return sentMessage;
     }
 
 
@@ -186,6 +186,9 @@ public class TCPClient {
     public void askSupportedCommands() {
         // TODO Step 8: Implement this method
         // Hint: Reuse sendCommand() method
+        if (this.connection.isConnected()) {
+            sendCommand("help");
+        }
     }
 
 
@@ -240,6 +243,8 @@ public class TCPClient {
      */
     private void parseIncomingCommands() {
         String[] users = new String[0];
+        String message = "";
+        String fromUser = "";
         while (isConnectionActive()) {
             // TODO Step 3: Implement this method
             // Hint: Reuse waitServerResponse() method
@@ -250,8 +255,13 @@ public class TCPClient {
             // Checks the login messages
 
             String response = waitServerResponse();
-
             String[] userList = response.split(" ");
+
+            String resposeWithoutCommands = "";
+            for (int i = 1; i < userList.length; i++) {
+                resposeWithoutCommands += userList[i];
+            }
+
 
             if (response.equals("loginok")){
                 onLoginResult(true, "Login was a success!");
@@ -269,12 +279,29 @@ public class TCPClient {
                 onUsersList(userList);
             }
             // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
+            else if (userList[0].equals("msgok")) {
+                fromUser = userList[1];;
+                onMsgReceived(false, fromUser, resposeWithoutCommands);
+            }
+
+            else if (userList[0].equals("msgok")) {
+                fromUser = userList[1];
+                onMsgReceived(true, fromUser, resposeWithoutCommands);
+            }
             // TODO Step 7: add support for incoming message errors (type: msgerr)
+            else if (userList[0].equals("msgerr")) {
+                onMsgError(message);
+            }
             // TODO Step 7: add support for incoming command errors (type: cmderr)
+            else if (userList[0].equals("cmderr")) {
+                onMsgError(message);
+            }
             // Hint for Step 7: call corresponding onXXX() methods which will notify all the listeners
 
             // TODO Step 8: add support for incoming supported command list (type: supported)
-
+            else if (userList[0].equals("supported")){
+                onSupported(userList);
+            }
         }
     }
 
@@ -350,6 +377,10 @@ public class TCPClient {
      */
     private void onMsgReceived(boolean priv, String sender, String text) {
         // TODO Step 7: Implement this method
+        TextMessage revivedMessage = new TextMessage(sender, priv, text );
+        for (ChatListener l : listeners) {
+            l.onMessageReceived(revivedMessage);
+        }
     }
 
     /**
@@ -359,6 +390,9 @@ public class TCPClient {
      */
     private void onMsgError(String errMsg) {
         // TODO Step 7: Implement this method
+        for (ChatListener l : listeners){
+            l.onMessageError(errMsg);
+        }
     }
 
     /**
@@ -368,6 +402,9 @@ public class TCPClient {
      */
     private void onCmdError(String errMsg) {
         // TODO Step 7: Implement this method
+        for (ChatListener l : listeners) {
+            l.onCommandError(errMsg);
+        }
     }
 
     /**
@@ -378,5 +415,8 @@ public class TCPClient {
      */
     private void onSupported(String[] commands) {
         // TODO Step 8: Implement this method
+            for (ChatListener l : listeners) {
+            l.onSupportedCommands(commands);
+        }
     }
 }
