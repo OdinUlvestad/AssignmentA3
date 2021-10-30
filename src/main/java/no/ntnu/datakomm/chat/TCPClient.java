@@ -55,16 +55,16 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
-        if (this.connection.isConnected()){
+        if (this.connection == null) {
+            System.out.println("Socket is already closed...");
+        }
+        else if (this.connection.isConnected()) {
             try {
-                if (connection.isClosed()) {
-                    System.out.println("Socket is already closed...");
-                } else {
-                    this.connection.close();
-                    this.toServer.close();
-                    this.fromServer.close();
-                    onDisconnect();
-                }
+                this.connection.close();
+                this.toServer.close();
+                this.fromServer.close();
+                onDisconnect();
+                this.connection = null;
             } catch (IOException e) {
                 System.out.println("Error message: " + e.getMessage());
             }
@@ -237,14 +237,18 @@ public class TCPClient {
         t.start();
     }
 
+    public void instantLogin() {
+        tryLogin("Odin");
+    }
+
     /**
      * Read incoming messages one by one, generate events for the listeners. A loop that runs until
      * the connection is closed.
      */
     private void parseIncomingCommands() {
-        String[] users = new String[0];
         String message = "";
         String fromUser = "";
+        instantLogin();
         while (isConnectionActive()) {
             // TODO Step 3: Implement this method
             // Hint: Reuse waitServerResponse() method
