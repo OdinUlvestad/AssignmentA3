@@ -156,7 +156,6 @@ public class GUIController implements ChatListener {
     private void addMsgToGui(boolean local, TextMessage msg, boolean warning) {
         // Create GUI elements, set their text and style according to what 
         // type of message this is
-
         HBox message = new HBox();
         VBox messageContent = new VBox();
         String senderText;

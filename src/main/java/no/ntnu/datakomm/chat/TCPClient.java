@@ -58,7 +58,7 @@ public class TCPClient {
         if (this.connection == null) {
             System.out.println("Socket is already closed...");
         }
-        else if (this.connection.isConnected()) {
+        else if (isConnectionActive()) {
             try {
                 this.connection.close();
                 this.toServer.close();
@@ -91,7 +91,7 @@ public class TCPClient {
         //TODO: Send a request to the server
         //TODO: implement the following commands: msg, privmsg, login, help, users.
         boolean cmdSuccess = false; // Check if command was successful
-        if (this.connection.isConnected()) { // check connection to the socket
+        if (isConnectionActive()) { // check connection to the socket
             try { // send command to the server
                 this.toServer.println(cmd);
                 System.out.println("Command to send: " + cmd);
@@ -113,15 +113,15 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        boolean sentMsg = false;
-        if (this.connection.isConnected()) {
+        boolean sentMsg = false; // Check to see if successful
+        if (isConnectionActive()) { // check connection
             try { // Send request to the server
-                sendCommand("msg " + message);
-                sentMsg = true;
+                sendCommand("msg " + message); // send protocol and message to server
+                sentMsg = true; // set check to success (true)
             } catch (Exception e) {
                 System.out.println("Error message: " + e.getMessage());
             }
-        }
+        } // returns true if successful
         return sentMsg;
     }
 
@@ -150,7 +150,7 @@ public class TCPClient {
         // TODO Step 5: implement this method
         // Hint: Use Wireshark and the provided chat client reference app to find out what commands the
         // client and server exchange for user listing.
-        if (this.connection.isConnected()) {
+        if (isConnectionActive()) {
             try {
                 sendCommand("users");
             } catch (Exception e) {
@@ -172,7 +172,7 @@ public class TCPClient {
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
         boolean sentMessage = false;
-        if (this.connection.isConnected()) {
+        if (isConnectionActive()) {
             sendCommand("privmsg " + recipient + " " + message);
             sentMessage = true;
         }
@@ -186,7 +186,7 @@ public class TCPClient {
     public void askSupportedCommands() {
         // TODO Step 8: Implement this method
         // Hint: Reuse sendCommand() method
-        if (this.connection.isConnected()) {
+        if (isConnectionActive()) {
             sendCommand("help");
         }
     }
@@ -202,14 +202,17 @@ public class TCPClient {
         // TODO Step 4: If you get I/O Exception or null from the stream, it means that something has gone wrong
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
         String response = "";
-        if (this.connection.isConnected()) {
+        if (isConnectionActive()) {
             try {
                 response = this.fromServer.readLine();
-                System.out.println("Server: " + response);
+
             } catch (Exception e) {
-                e.getMessage();
+                System.out.println(e.getMessage());
+                disconnect();
+                onDisconnect();
             }
         }
+        System.out.println("Server: " + response);
         return response;
     }
 
@@ -237,18 +240,61 @@ public class TCPClient {
         t.start();
     }
 
-    public void instantLogin() {
-        tryLogin("Odin");
-    }
-
     /**
      * Read incoming messages one by one, generate events for the listeners. A loop that runs until
      * the connection is closed.
      */
     private void parseIncomingCommands() {
-        String message = "";
-        String fromUser = "";
-        instantLogin();
+        String fromUser;
+
+        while (isConnectionActive()) {
+            String serverResponse = waitServerResponse();
+            String[] splitServerResponse = serverResponse.split(" ", 3);
+
+
+            switch (splitServerResponse[0]) {
+                case "loginok":
+                    onLoginResult(true, "Login was a success!");
+                    System.out.println("Logged in correctly");
+                    break;
+
+                case "loginerr":
+                    onLoginResult(false, "Login failed, reason: " + lastError);
+                    System.out.println("login failed, reason: " + lastError);
+                    break;
+
+                case "users":
+                    onUsersList(splitServerResponse);
+                    System.out.println("List updated and received!");
+                    break;
+
+                case "msg":
+                    onMsgReceived(false, splitServerResponse[1], splitServerResponse[2]);
+                    break;
+
+                case "privmsg":
+                    onMsgReceived(true, splitServerResponse[1], splitServerResponse[2]);
+                    break;
+
+                case "msgerr":
+                    onMsgError(serverResponse);
+                    System.out.println("A public message wasn't sent...");
+                    break;
+
+                case "cmderr":
+                    onCmdError(serverResponse);
+                    System.out.println("Command not recognized...");
+                    break;
+
+                case "supported":
+                    onSupported(splitServerResponse);
+                    System.out.println("The help command was printed out successfully!");
+                    break;
+            }
+        }
+
+
+        /**String fromUser = "";
         while (isConnectionActive()) {
             // TODO Step 3: Implement this method
             // Hint: Reuse waitServerResponse() method
@@ -284,7 +330,7 @@ public class TCPClient {
             }
             // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
             else if (userList[0].equals("msgok")) {
-                fromUser = userList[1];;
+                fromUser = userList[1];
                 onMsgReceived(false, fromUser, resposeWithoutCommands);
             }
 
@@ -294,11 +340,13 @@ public class TCPClient {
             }
             // TODO Step 7: add support for incoming message errors (type: msgerr)
             else if (userList[0].equals("msgerr")) {
-                onMsgError(message);
+                onMsgError(lastError);
+                System.out.println("An error occured...");
             }
             // TODO Step 7: add support for incoming command errors (type: cmderr)
             else if (userList[0].equals("cmderr")) {
-                onMsgError(message);
+                onCmdError(lastError);
+                System.out.println("An error occured...");
             }
             // Hint for Step 7: call corresponding onXXX() methods which will notify all the listeners
 
@@ -306,7 +354,7 @@ public class TCPClient {
             else if (userList[0].equals("supported")){
                 onSupported(userList);
             }
-        }
+        }*/
     }
 
     /**
@@ -381,9 +429,9 @@ public class TCPClient {
      */
     private void onMsgReceived(boolean priv, String sender, String text) {
         // TODO Step 7: Implement this method
-        TextMessage revivedMessage = new TextMessage(sender, priv, text );
+        TextMessage receivedMessage = new TextMessage(sender, priv, text );
         for (ChatListener l : listeners) {
-            l.onMessageReceived(revivedMessage);
+            l.onMessageReceived(receivedMessage);
         }
     }
 
