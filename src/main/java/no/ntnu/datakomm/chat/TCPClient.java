@@ -29,15 +29,17 @@ public class TCPClient {
         // Hint: Remember to set up all the necessary input/output stream variables
         boolean connectionFlag = false; // Check if the connection was successful
         System.out.println("Attempting client boot up...");
+
         try { // Try to establish a connection to the server
             this.connection = new Socket(host, port); // The "three way handshake"
             toServer = new PrintWriter(this.connection.getOutputStream(),true); // sends to the server
             fromServer = new BufferedReader(new InputStreamReader(connection.getInputStream())); // reads from the server
+            // update the status of the connection
             connectionFlag = true;
             System.out.println("Connection status = " + connectionFlag);
+
         } catch (IOException e) { // Throws an exception if code ran unsuccessfully
             System.out.println("Connection to socket failed, reason: " + e.getMessage());
-
         }
         // returns true if connection was a success, otherwise false.
         return connectionFlag;
@@ -55,16 +57,17 @@ public class TCPClient {
     public synchronized void disconnect() {
         // TODO Step 4: implement this method
         // Hint: remember to check if connection is active
-        if (this.connection == null) {
+        if (this.connection == null) { // Check if the socket is already closed
             System.out.println("Socket is already closed...");
-        }
-        else if (isConnectionActive()) {
-            try {
+
+        } else if (isConnectionActive()) {
+            try { // If the socket connection is open, close it.
                 this.connection.close();
                 this.toServer.close();
                 this.fromServer.close();
-                onDisconnect();
                 this.connection = null;
+                // Update the server side that the connection is closed.
+                onDisconnect();
             } catch (IOException e) {
                 System.out.println("Error message: " + e.getMessage());
             }
@@ -87,20 +90,21 @@ public class TCPClient {
     private boolean sendCommand(String cmd) {
         // TODO Step 2: Implement this method
         // Hint: Remember to check if connection is active
-        //TODO: Set up input and output streams for communication
-        //TODO: Send a request to the server
-        //TODO: implement the following commands: msg, privmsg, login, help, users.
         boolean cmdSuccess = false; // Check if command was successful
+
         if (isConnectionActive()) { // check connection to the socket
             try { // send command to the server
+                // Accepted commands/protocols are:
+                // login, msg, privmsg, supported, users.
                 this.toServer.println(cmd);
                 System.out.println("Command to send: " + cmd);
                 cmdSuccess = true;
+
             } catch (Exception e) {
                 System.out.println("Error: " + e.getMessage());
             }
-        }
-        return cmdSuccess;
+            // returns true, if the command was sent successfully.
+        } return cmdSuccess;
     }
 
     /**
@@ -113,7 +117,12 @@ public class TCPClient {
         // TODO Step 2: implement this method
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
-        boolean sentMsg = false; // Check to see if successful
+        /** You can choose to write your method like this or simply
+         * just do all the necessary operations in one sentence.
+         *
+         * You'll see I've used both ways to write the code.
+         *
+         * boolean sentMsg = false; // Check to see if successful
         if (isConnectionActive()) { // check connection
             try { // Send request to the server
                 sendCommand("msg " + message); // send protocol and message to server
@@ -122,7 +131,8 @@ public class TCPClient {
                 System.out.println("Error message: " + e.getMessage());
             }
         } // returns true if successful
-        return sentMsg;
+        return sentMsg; */
+        return sendCommand("msg " + message);
     }
 
     /**
@@ -133,11 +143,11 @@ public class TCPClient {
     public void tryLogin(String username) {
         // TODO Step 3: implement this method
         // Hint: Reuse sendCommand() method
-        if (this.connection.isConnected()) {
-            try {
+        if (isConnectionActive()) {
+            try {  // sending the login protocol.
                 sendCommand("login " + username);
             } catch (Exception e) {
-                e.getMessage();
+                System.out.println(e.getMessage());
             }
         }
     }
@@ -151,10 +161,10 @@ public class TCPClient {
         // Hint: Use Wireshark and the provided chat client reference app to find out what commands the
         // client and server exchange for user listing.
         if (isConnectionActive()) {
-            try {
+            try { // sending the users protocol
                 sendCommand("users");
             } catch (Exception e) {
-                e.getMessage();
+                System.out.println(e.getMessage());
             }
         }
 
@@ -172,11 +182,15 @@ public class TCPClient {
         // Hint: Reuse sendCommand() method
         // Hint: update lastError if you want to store the reason for the error.
         boolean sentMessage = false;
-        if (isConnectionActive()) {
+        if (isConnectionActive()) { // Sending the private message protocol.
             sendCommand("privmsg " + recipient + " " + message);
             sentMessage = true;
-        }
+        } // returns true if sent correctly
         return sentMessage;
+
+        /** You can also choose to write the method like this
+         *
+         * return sendCommand("privmsg " + recipient + " " + message); */
     }
 
 
@@ -187,6 +201,7 @@ public class TCPClient {
         // TODO Step 8: Implement this method
         // Hint: Reuse sendCommand() method
         if (isConnectionActive()) {
+            // Sending the help protocol
             sendCommand("help");
         }
     }
@@ -203,9 +218,9 @@ public class TCPClient {
         // with the stream and hence the socket. Probably a good idea to close the socket in that case.
         String response = "";
         if (isConnectionActive()) {
-            try {
+            try { // reads the response from the server
                 response = this.fromServer.readLine();
-
+            // catches an exception if unable to read
             } catch (Exception e) {
                 System.out.println(e.getMessage());
                 disconnect();
@@ -245,116 +260,69 @@ public class TCPClient {
      * the connection is closed.
      */
     private void parseIncomingCommands() {
-        String fromUser;
+        // TODO Step 3: Implement this method
+        // Hint: Reuse waitServerResponse() method
+        // Hint: Have a switch-case (or other way) to check what type of response is received from the server
+        // and act on it.
+        // Hint: In Step 3 you need to handle only login-related responses.
+        // Hint: In Step 3 reuse onLoginResult() method
+        // Checks the login messages
+        // TODO Step 5: update this method, handle user-list response from the server
+        // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
+        // TODO Step 7: add support for incoming message errors (type: msgerr)
+        // TODO Step 7: add support for incoming command errors (type: cmderr)
+        // TODO Step 8: add support for incoming supported command list (type: supported)
 
         while (isConnectionActive()) {
+            // Variable to store the response from the server
             String serverResponse = waitServerResponse();
+            // list of strings split into "protocol, user, text-message"
             String[] splitServerResponse = serverResponse.split(" ", 3);
+            // list of strings split to keep track of users
+            String[] splitSingleServerResponse = serverResponse.split(" ");
 
-
+            // Switch case that uses command-words to execute different protocols,
+            // reads the first string from the server as an identifier.
             switch (splitServerResponse[0]) {
-                case "loginok":
+                case "loginok": // Successful login! aka the user was logged in.
                     onLoginResult(true, "Login was a success!");
                     System.out.println("Logged in correctly");
                     break;
 
-                case "loginerr":
+                case "loginerr": // Error on login.. aka the user did not log in.
                     onLoginResult(false, "Login failed, reason: " + lastError);
                     System.out.println("login failed, reason: " + lastError);
                     break;
 
-                case "users":
-                    onUsersList(splitServerResponse);
+                case "users": // Prints the list of users!
+                    onUsersList(splitSingleServerResponse);
                     System.out.println("List updated and received!");
                     break;
 
-                case "msg":
+                case "msg": // Receives public messages from other users
                     onMsgReceived(false, splitServerResponse[1], splitServerResponse[2]);
                     break;
 
-                case "privmsg":
+                case "privmsg": // Receives private message from a single user
                     onMsgReceived(true, splitServerResponse[1], splitServerResponse[2]);
                     break;
 
-                case "msgerr":
+                case "msgerr": // Error when receiving or sending a massage
                     onMsgError(serverResponse);
-                    System.out.println("A public message wasn't sent...");
+                    System.out.println("A public message wasn't sent or received...");
                     break;
 
-                case "cmderr":
+                case "cmderr": // Error when trying to use an unknown command
                     onCmdError(serverResponse);
                     System.out.println("Command not recognized...");
                     break;
 
-                case "supported":
-                    onSupported(splitServerResponse);
+                case "supported": // Displays a list over all command words
+                    onSupported(splitSingleServerResponse);
                     System.out.println("The help command was printed out successfully!");
                     break;
             }
         }
-
-
-        /**String fromUser = "";
-        while (isConnectionActive()) {
-            // TODO Step 3: Implement this method
-            // Hint: Reuse waitServerResponse() method
-            // Hint: Have a switch-case (or other way) to check what type of response is received from the server
-            // and act on it.
-            // Hint: In Step 3 you need to handle only login-related responses.
-            // Hint: In Step 3 reuse onLoginResult() method
-            // Checks the login messages
-
-            String response = waitServerResponse();
-            String[] userList = response.split(" ");
-
-            String resposeWithoutCommands = "";
-            for (int i = 1; i < userList.length; i++) {
-                resposeWithoutCommands += userList[i];
-            }
-
-
-            if (response.equals("loginok")){
-                onLoginResult(true, "Login was a success!");
-                System.out.println("Logged in successfully!");
-            } else if ((response.equals("loginerr command not supported")
-                || (response.equals("loginerr username already in use"))
-                || (response.equals("loginerr incorrect username format")))) {
-                onLoginResult(false, "Login failed");
-                System.out.println("An error occurred while attempting login...");
-            }
-
-            // TODO Step 5: update this method, handle user-list response from the server
-            // Hint: In Step 5 reuse onUserList() method
-            else if (userList[0].equals("users")) {
-                onUsersList(userList);
-            }
-            // TODO Step 7: add support for incoming chat messages from other users (types: msg, privmsg)
-            else if (userList[0].equals("msgok")) {
-                fromUser = userList[1];
-                onMsgReceived(false, fromUser, resposeWithoutCommands);
-            }
-
-            else if (userList[0].equals("msgok")) {
-                fromUser = userList[1];
-                onMsgReceived(true, fromUser, resposeWithoutCommands);
-            }
-            // TODO Step 7: add support for incoming message errors (type: msgerr)
-            else if (userList[0].equals("msgerr")) {
-                onMsgError(lastError);
-                System.out.println("An error occured...");
-            }
-            // TODO Step 7: add support for incoming command errors (type: cmderr)
-            else if (userList[0].equals("cmderr")) {
-                onCmdError(lastError);
-                System.out.println("An error occured...");
-            }
-            // Hint for Step 7: call corresponding onXXX() methods which will notify all the listeners
-
-            // TODO Step 8: add support for incoming supported command list (type: supported)
-            else if (userList[0].equals("supported")){
-                onSupported(userList);
-            }
-        }*/
     }
 
     /**
